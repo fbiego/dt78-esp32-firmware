@@ -31,6 +31,7 @@ const int resolution = 8;
 
 int brightness = 100;
 bool motor = false;
+bool autoScreen = false;//raise to wake
 
 float vector;
 bool hr24 = true;
@@ -67,3 +68,5 @@ void ui_menuScreen_screen_init();
 void ui_messageListScreen_screen_init();
 void ui_settingsScreen_screen_init();
 void ui_textScreen_screen_init();
+void ui_aboutScreen_screen_init();
+void ui_testScreen_screen_init();

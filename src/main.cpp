@@ -52,9 +52,20 @@ lv_obj_t *ui_scrollSettings;
 lv_obj_t *ui_bluetoothText;
 lv_obj_t *ui_bluetoothSwitch;
 lv_obj_t *ui_brightnessText;
+lv_obj_t *ui_autoScreenText;
+lv_obj_t *ui_autoScreenSwitch;
 lv_obj_t *ui_brightnessSlider;
-lv_obj_t *ui_buttonvibrate;
+lv_obj_t *ui_themeText;
+lv_obj_t *ui_colorWheel;
+lv_obj_t *ui_powerText;
+lv_obj_t *ui_powerSlider;
+
+lv_obj_t *ui_testScreen;
+lv_obj_t *ui_buttonUp;
+lv_obj_t *ui_buttonDown;
+lv_obj_t *ui_scrollTest;
 lv_obj_t *ui_vibrateText;
+lv_obj_t *ui_buttonvibrate;
 lv_obj_t *ui_accelerometerText;
 lv_obj_t *ui_accXtext;
 lv_obj_t *ui_accXBar;
@@ -62,8 +73,9 @@ lv_obj_t *ui_accYText;
 lv_obj_t *ui_accYBar;
 lv_obj_t *ui_accZText;
 lv_obj_t *ui_accZBar;
-lv_obj_t *ui_themeText;
-lv_obj_t *ui_colorWheel;
+
+lv_obj_t *ui_aboutScreen;
+lv_obj_t *ui_aboutList;
 
 lv_obj_t *ui_menuScreen;
 lv_obj_t *ui_menuList;
@@ -140,11 +152,18 @@ void set_time(uint8_t sc, uint8_t mn, uint8_t hr, uint8_t dy, uint8_t mt, int yr
 void checkButton1()
 {
   button1State = digitalRead(BT1); // read the button state on the pin "BUTTON_PIN"
+
+  lv_disp_t *display = lv_disp_get_default();
+  lv_obj_t *actScr = lv_disp_get_scr_act(display);
   if (button1State)
   {
     startPress1 = millis();
     //    Serial.print("HIGH - ");
     // button was pressed, currently high
+    if (actScr == ui_testScreen)
+    {
+      lv_arc_set_value(ui_buttonDown, 1);
+    }
   }
   else
   {
@@ -152,13 +171,16 @@ void checkButton1()
 
     Serial.print("BTN1: ");
     Serial.println(dur);
+    if (actScr == ui_testScreen)
+    {
+      lv_arc_set_value(ui_buttonDown, 0);
+    }
 
     if (dur > DEBOUNCE)
     {
       if (screenOn)
       {
-        lv_disp_t *display = lv_disp_get_default();
-        lv_obj_t *actScr = lv_disp_get_scr_act(display);
+
         if (actScr != ui_menuScreen)
         {
           load_screen(1);
@@ -181,11 +203,17 @@ void checkButton2()
 {
 
   button2State = digitalRead(BT2); // read the button state on the pin "BUTTON_PIN"
+  lv_disp_t *display = lv_disp_get_default();
+  lv_obj_t *actScr = lv_disp_get_scr_act(display);
   if (button2State)
   {
     startPress2 = millis();
     //    Serial.print("HIGH - ");
     // button was pressed, currently high
+    if (actScr == ui_testScreen)
+    {
+      lv_arc_set_value(ui_buttonUp, 1);
+    }
   }
   else
   {
@@ -193,13 +221,16 @@ void checkButton2()
 
     Serial.print("BTN2: ");
     Serial.println(dur);
+    if (actScr == ui_testScreen)
+    {
+      lv_arc_set_value(ui_buttonUp, 0);
+    }
 
     if (dur > DEBOUNCE)
     {
       if (screenOn)
       {
-        lv_disp_t *display = lv_disp_get_default();
-        lv_obj_t *actScr = lv_disp_get_scr_act(display);
+
         if (actScr == ui_watchScreen)
         {
           screenOn = false;
@@ -277,7 +308,11 @@ static void event_handler(lv_event_t *e)
       }
       if (obj == ui_buttonAbout)
       {
-        deep_sleep();
+        load_screen(5);
+      }
+      if (obj == ui_buttonFind)
+      {
+        load_screen(6);
       }
     }
   }
@@ -289,6 +324,22 @@ static void slider_event_cb(lv_event_t *e)
   if (slider == ui_brightnessSlider)
   {
     brightness = (int)lv_slider_get_value(slider);
+  }
+  if (slider == ui_powerSlider)
+  {
+    int v = (int)lv_slider_get_value(slider);
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_RELEASED)
+    {
+      if (v > 90)
+      {
+        deep_sleep();
+      }
+      else
+      {
+        lv_slider_set_value(ui_powerSlider, 0, LV_ANIM_ON);
+      }
+    }
   }
 }
 
@@ -306,10 +357,15 @@ static void button_event_handler(lv_event_t *e)
   }
 }
 
-void bleButton(lv_event_t *e)
+void switch_event_cb(lv_event_t *e)
 {
   lv_event_code_t code = lv_event_get_code(e);
-  if (code == LV_EVENT_VALUE_CHANGED)
+  lv_obj_t *obj = lv_event_get_target(e);
+  if (obj == ui_autoScreenSwitch)
+  {
+    autoScreen = lv_obj_has_state(ui_autoScreenSwitch, LV_STATE_CHECKED);
+  }
+  if (obj == ui_bluetoothSwitch)
   {
     bool state = lv_obj_has_state(ui_bluetoothSwitch, LV_STATE_CHECKED);
     if (state)
@@ -320,6 +376,9 @@ void bleButton(lv_event_t *e)
     {
       BLEDevice::stopAdvertising();
     }
+  }
+  if (code == LV_EVENT_VALUE_CHANGED)
+  {
   }
 }
 
@@ -507,9 +566,6 @@ void deep_sleep()
 
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_32, 0); // 1 = High, 0 = Low
 
-  // If you were to use ext1, you would use it like
-  // esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK,ESP_EXT1_WAKEUP_ANY_HIGH);
-
   // Go to sleep now
   Serial.println("Going to sleep now");
   esp_deep_sleep_start();
@@ -574,6 +630,8 @@ void setup()
     ui_messageListScreen_screen_init();
     ui_settingsScreen_screen_init();
     ui_textScreen_screen_init();
+    ui_aboutScreen_screen_init();
+    ui_testScreen_screen_init();
     lv_disp_load_scr(ui_watchScreen);
 
     Serial.println("Setup done");
@@ -689,7 +747,7 @@ void loop()
       lv_obj_clear_flag(ui_bluetoothIcon, LV_OBJ_FLAG_HIDDEN);
     }
   }
-  else if (actScr == ui_settingsScreen)
+  else if (actScr == ui_testScreen)
   {
     digitalWrite(MOTOR, motor);
 
@@ -708,7 +766,10 @@ void loop()
 
   if (accX > 0.3 && accX < 1.0 && accY > -0.3 && accY < 0.3 && accZ > -1.0 && accZ < -0.7)
   {
-    screenOn = true;
+    if (autoScreen){
+screenOn = true;
+    }
+    
   }
 
   if (screenOn)
@@ -748,6 +809,12 @@ void load_screen(int screen)
   case 4:
     reload_message_list();
     lv_disp_load_scr(ui_messageListScreen);
+    break;
+  case 5:
+    lv_disp_load_scr(ui_aboutScreen);
+    break;
+  case 6:
+    lv_disp_load_scr(ui_testScreen);
     break;
   }
 }
@@ -1320,7 +1387,7 @@ void ui_settingsScreen_screen_init(void)
 
   lv_obj_add_state(ui_bluetoothSwitch, LV_STATE_CHECKED);
 
-  lv_obj_add_event_cb(ui_bluetoothSwitch, bleButton, LV_EVENT_VALUE_CHANGED, NULL);
+  lv_obj_add_event_cb(ui_bluetoothSwitch, switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
   // ui_brightnessText
 
@@ -1357,144 +1424,33 @@ void ui_settingsScreen_screen_init(void)
 
   lv_obj_add_event_cb(ui_brightnessSlider, slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
-  // ui_buttonvibrate
+  // ui_autoScreenText
 
-  ui_buttonvibrate = lv_imgbtn_create(ui_scrollSettings);
-  lv_imgbtn_set_src(ui_buttonvibrate, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_vibrate_png, NULL);
-  lv_imgbtn_set_src(ui_buttonvibrate, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_vibrate_png, NULL);
+  ui_autoScreenText = lv_label_create(ui_scrollSettings);
 
-  lv_obj_set_height(ui_buttonvibrate, 24);
-  lv_obj_set_width(ui_buttonvibrate, LV_SIZE_CONTENT);
+  lv_obj_set_width(ui_autoScreenText, LV_SIZE_CONTENT);
+  lv_obj_set_height(ui_autoScreenText, LV_SIZE_CONTENT);
 
-  lv_obj_set_x(ui_buttonvibrate, -51);
-  lv_obj_set_y(ui_buttonvibrate, 5);
+  lv_obj_set_x(ui_autoScreenText, -45);
+  lv_obj_set_y(ui_autoScreenText, 0);
 
-  lv_obj_set_align(ui_buttonvibrate, LV_ALIGN_CENTER);
+  lv_obj_set_align(ui_autoScreenText, LV_ALIGN_CENTER);
 
-  lv_obj_set_style_outline_color(ui_buttonvibrate, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_obj_set_style_outline_opa(ui_buttonvibrate, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_obj_set_style_outline_width(ui_buttonvibrate, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_obj_set_style_outline_pad(ui_buttonvibrate, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
-  lv_obj_set_style_border_color(ui_buttonvibrate, lv_color_hex(0x22540C), LV_PART_MAIN | LV_STATE_PRESSED);
-  lv_obj_set_style_border_opa(ui_buttonvibrate, 255, LV_PART_MAIN | LV_STATE_PRESSED);
-  lv_obj_set_style_border_width(ui_buttonvibrate, 2, LV_PART_MAIN | LV_STATE_PRESSED);
-  lv_obj_set_style_img_recolor(ui_buttonvibrate, lv_color_hex(0x2B258D),
-                               LV_PART_MAIN | LV_STATE_CHECKED | LV_STATE_PRESSED);
-  lv_obj_set_style_img_recolor_opa(ui_buttonvibrate, 255, LV_PART_MAIN | LV_STATE_CHECKED | LV_STATE_PRESSED);
+  lv_label_set_text(ui_autoScreenText, "Raise to wake");
 
-  lv_obj_add_event_cb(ui_buttonvibrate, button_event_handler, LV_EVENT_ALL, NULL);
+  // ui_autoScreenSwitch
 
-  // ui_vibrateText
+  ui_autoScreenSwitch = lv_switch_create(ui_scrollSettings);
 
-  ui_vibrateText = lv_label_create(ui_scrollSettings);
+  lv_obj_set_width(ui_autoScreenSwitch, 50);
+  lv_obj_set_height(ui_autoScreenSwitch, 25);
 
-  lv_obj_set_width(ui_vibrateText, LV_SIZE_CONTENT);
-  lv_obj_set_height(ui_vibrateText, LV_SIZE_CONTENT);
+  lv_obj_set_x(ui_autoScreenSwitch, 45);
+  lv_obj_set_y(ui_autoScreenSwitch, 0);
 
-  lv_obj_set_x(ui_vibrateText, 25);
-  lv_obj_set_y(ui_vibrateText, 5);
+  lv_obj_set_align(ui_autoScreenSwitch, LV_ALIGN_CENTER);
 
-  lv_obj_set_align(ui_vibrateText, LV_ALIGN_CENTER);
-
-  lv_label_set_text(ui_vibrateText, "Vibrate Test");
-
-  // ui_accelerometerText
-
-  ui_accelerometerText = lv_label_create(ui_scrollSettings);
-
-  lv_obj_set_width(ui_accelerometerText, LV_SIZE_CONTENT);
-  lv_obj_set_height(ui_accelerometerText, LV_SIZE_CONTENT);
-
-  lv_obj_set_x(ui_accelerometerText, 0);
-  lv_obj_set_y(ui_accelerometerText, 62);
-
-  lv_obj_set_align(ui_accelerometerText, LV_ALIGN_CENTER);
-
-  lv_label_set_text(ui_accelerometerText, "Accelerometer");
-
-  // ui_accXtext
-
-  ui_accXtext = lv_label_create(ui_scrollSettings);
-
-  lv_obj_set_width(ui_accXtext, LV_SIZE_CONTENT);
-  lv_obj_set_height(ui_accXtext, LV_SIZE_CONTENT);
-
-  lv_obj_set_x(ui_accXtext, -75);
-  lv_obj_set_y(ui_accXtext, 80);
-
-  lv_obj_set_align(ui_accXtext, LV_ALIGN_CENTER);
-
-  lv_label_set_text(ui_accXtext, "X");
-
-  // ui_accXBar
-
-  ui_accXBar = lv_bar_create(ui_scrollSettings);
-  lv_bar_set_range(ui_accXBar, 0, 100);
-  lv_bar_set_value(ui_accXBar, 25, LV_ANIM_OFF);
-
-  lv_obj_set_width(ui_accXBar, 150);
-  lv_obj_set_height(ui_accXBar, 10);
-
-  lv_obj_set_x(ui_accXBar, 10);
-  lv_obj_set_y(ui_accXBar, 80);
-
-  lv_obj_set_align(ui_accXBar, LV_ALIGN_CENTER);
-
-  // ui_accYText
-
-  ui_accYText = lv_label_create(ui_scrollSettings);
-
-  lv_obj_set_width(ui_accYText, LV_SIZE_CONTENT);
-  lv_obj_set_height(ui_accYText, LV_SIZE_CONTENT);
-
-  lv_obj_set_x(ui_accYText, -75);
-  lv_obj_set_y(ui_accYText, 100);
-
-  lv_obj_set_align(ui_accYText, LV_ALIGN_CENTER);
-
-  lv_label_set_text(ui_accYText, "Y");
-
-  // ui_accYBar
-
-  ui_accYBar = lv_bar_create(ui_scrollSettings);
-  lv_bar_set_range(ui_accYBar, 0, 100);
-  lv_bar_set_value(ui_accYBar, 25, LV_ANIM_OFF);
-
-  lv_obj_set_width(ui_accYBar, 150);
-  lv_obj_set_height(ui_accYBar, 10);
-
-  lv_obj_set_x(ui_accYBar, 10);
-  lv_obj_set_y(ui_accYBar, 100);
-
-  lv_obj_set_align(ui_accYBar, LV_ALIGN_CENTER);
-
-  // ui_accZText
-
-  ui_accZText = lv_label_create(ui_scrollSettings);
-
-  lv_obj_set_width(ui_accZText, LV_SIZE_CONTENT);
-  lv_obj_set_height(ui_accZText, LV_SIZE_CONTENT);
-
-  lv_obj_set_x(ui_accZText, -75);
-  lv_obj_set_y(ui_accZText, 120);
-
-  lv_obj_set_align(ui_accZText, LV_ALIGN_CENTER);
-
-  lv_label_set_text(ui_accZText, "Z");
-
-  // ui_accZBar
-
-  ui_accZBar = lv_bar_create(ui_scrollSettings);
-  lv_bar_set_range(ui_accZBar, 0, 100);
-  lv_bar_set_value(ui_accZBar, 25, LV_ANIM_OFF);
-
-  lv_obj_set_width(ui_accZBar, 150);
-  lv_obj_set_height(ui_accZBar, 10);
-
-  lv_obj_set_x(ui_accZBar, 10);
-  lv_obj_set_y(ui_accZBar, 120);
-
-  lv_obj_set_align(ui_accZBar, LV_ALIGN_CENTER);
+  lv_obj_add_event_cb(ui_autoScreenSwitch, switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
   // ui_themeText
 
@@ -1504,7 +1460,7 @@ void ui_settingsScreen_screen_init(void)
   lv_obj_set_height(ui_themeText, LV_SIZE_CONTENT);
 
   lv_obj_set_x(ui_themeText, 0);
-  lv_obj_set_y(ui_themeText, 145);
+  lv_obj_set_y(ui_themeText, 30);
 
   lv_obj_set_align(ui_themeText, LV_ALIGN_CENTER);
 
@@ -1514,15 +1470,44 @@ void ui_settingsScreen_screen_init(void)
 
   ui_colorWheel = lv_colorwheel_create(ui_scrollSettings, true);
 
-  lv_obj_set_width(ui_colorWheel, 150);
-  lv_obj_set_height(ui_colorWheel, 150);
+  lv_obj_set_width(ui_colorWheel, 100);
+  lv_obj_set_height(ui_colorWheel, 100);
 
   lv_obj_set_x(ui_colorWheel, 0);
-  lv_obj_set_y(ui_colorWheel, 200);
+  lv_obj_set_y(ui_colorWheel, 80);
 
   lv_obj_set_align(ui_colorWheel, LV_ALIGN_TOP_MID);
 
   lv_obj_add_event_cb(ui_colorWheel, theme_change, LV_EVENT_VALUE_CHANGED, NULL);
+
+  // ui_powerText
+
+  ui_powerText = lv_label_create(ui_scrollSettings);
+
+  lv_obj_set_width(ui_powerText, LV_SIZE_CONTENT);
+  lv_obj_set_height(ui_powerText, LV_SIZE_CONTENT);
+
+  lv_obj_set_x(ui_powerText, 0);
+  lv_obj_set_y(ui_powerText, 170);
+
+  lv_obj_set_align(ui_powerText, LV_ALIGN_CENTER);
+
+  lv_label_set_text(ui_powerText, "Slide to power off");
+
+  // ui_powerSlider
+
+  ui_powerSlider = lv_slider_create(ui_scrollSettings);
+  lv_slider_set_range(ui_powerSlider, 0, 100);
+
+  lv_obj_set_width(ui_powerSlider, 150);
+  lv_obj_set_height(ui_powerSlider, 25);
+
+  lv_obj_set_x(ui_powerSlider, 6);
+  lv_obj_set_y(ui_powerSlider, 200);
+
+  lv_obj_set_align(ui_powerSlider, LV_ALIGN_CENTER);
+
+  lv_obj_add_event_cb(ui_powerSlider, slider_event_cb, LV_EVENT_ALL, NULL);
 }
 
 void ui_menuScreen_screen_init(void)
@@ -1581,7 +1566,7 @@ void ui_menuScreen_screen_init(void)
   lv_obj_add_event_cb(ui_buttonTimer, event_handler, LV_EVENT_CLICKED, NULL);
   set_style(ui_buttonTimer);
 
-  ui_buttonFind = lv_list_add_btn(ui_menuList, &ui_img_search_png, "Find My Phone");
+  ui_buttonFind = lv_list_add_btn(ui_menuList, &ui_img_search_png, "Tests");
   lv_obj_add_event_cb(ui_buttonFind, event_handler, LV_EVENT_CLICKED, NULL);
   set_style(ui_buttonFind);
 
@@ -1589,7 +1574,7 @@ void ui_menuScreen_screen_init(void)
   lv_obj_add_event_cb(ui_buttonSettings, event_handler, LV_EVENT_CLICKED, NULL);
   set_style(ui_buttonSettings);
 
-  ui_buttonAbout = lv_list_add_btn(ui_menuList, &ui_img_about_png, "Sleep");
+  ui_buttonAbout = lv_list_add_btn(ui_menuList, &ui_img_about_png, "About");
   lv_obj_add_event_cb(ui_buttonAbout, event_handler, LV_EVENT_CLICKED, NULL);
   set_style(ui_buttonAbout);
 
@@ -1627,4 +1612,264 @@ void ui_messageListScreen_screen_init(void)
 
   lv_obj_set_style_pad_top(ui_messageList, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_pad_bottom(ui_messageList, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
+void ui_testScreen_screen_init(void)
+{
+
+  // ui_testScreen
+
+  ui_testScreen = lv_obj_create(NULL);
+
+  lv_obj_clear_flag(ui_testScreen, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_set_style_bg_color(ui_testScreen, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_opa(ui_testScreen, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+  lv_obj_add_event_cb(ui_testScreen, my_gesture, LV_EVENT_GESTURE, NULL);
+
+  // ui_buttonUp
+
+  ui_buttonUp = lv_arc_create(ui_testScreen);
+
+  lv_obj_set_width(ui_buttonUp, 240);
+  lv_obj_set_height(ui_buttonUp, 240);
+
+  lv_obj_set_x(ui_buttonUp, 0);
+  lv_obj_set_y(ui_buttonUp, 0);
+
+  lv_obj_set_align(ui_buttonUp, LV_ALIGN_CENTER);
+
+  lv_arc_set_range(ui_buttonUp, 0, 1);
+  lv_arc_set_value(ui_buttonUp, 0);
+  lv_arc_set_bg_angles(ui_buttonUp, 310, 340);
+
+  lv_obj_set_style_bg_color(ui_buttonUp, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_opa(ui_buttonUp, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+
+  // ui_buttonDown
+
+  ui_buttonDown = lv_arc_create(ui_testScreen);
+
+  lv_obj_set_width(ui_buttonDown, 240);
+  lv_obj_set_height(ui_buttonDown, 240);
+
+  lv_obj_set_x(ui_buttonDown, 0);
+  lv_obj_set_y(ui_buttonDown, 0);
+
+  lv_obj_set_align(ui_buttonDown, LV_ALIGN_CENTER);
+
+  lv_arc_set_range(ui_buttonDown, 0, 1);
+  lv_arc_set_value(ui_buttonDown, 0);
+  lv_arc_set_bg_angles(ui_buttonDown, 380, 410);
+
+  lv_obj_set_style_bg_color(ui_buttonDown, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_opa(ui_buttonDown, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+
+  // ui_scrollTest
+
+  ui_scrollTest = lv_obj_create(ui_testScreen);
+
+  lv_obj_set_width(ui_scrollTest, 240);
+  lv_obj_set_height(ui_scrollTest, 240);
+
+  lv_obj_set_x(ui_scrollTest, 0);
+  lv_obj_set_y(ui_scrollTest, 0);
+
+  lv_obj_set_align(ui_scrollTest, LV_ALIGN_CENTER);
+
+  lv_obj_set_scrollbar_mode(ui_scrollTest, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_set_scroll_dir(ui_scrollTest, LV_DIR_VER);
+
+  lv_obj_set_style_radius(ui_scrollTest, 120, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_color(ui_scrollTest, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_opa(ui_scrollTest, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_border_width(ui_scrollTest, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_outline_width(ui_scrollTest, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_outline_pad(ui_scrollTest, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_pad_left(ui_scrollTest, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_pad_right(ui_scrollTest, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_pad_top(ui_scrollTest, 100, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_pad_bottom(ui_scrollTest, 70, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+  // ui_vibrateText
+
+  ui_vibrateText = lv_label_create(ui_scrollTest);
+
+  lv_obj_set_width(ui_vibrateText, LV_SIZE_CONTENT);
+  lv_obj_set_height(ui_vibrateText, LV_SIZE_CONTENT);
+
+  lv_obj_set_x(ui_vibrateText, 25);
+  lv_obj_set_y(ui_vibrateText, -50);
+
+  lv_obj_set_align(ui_vibrateText, LV_ALIGN_CENTER);
+
+  lv_label_set_text(ui_vibrateText, "Vibrate Test");
+
+  // ui_buttonvibrate
+
+  ui_buttonvibrate = lv_imgbtn_create(ui_scrollTest);
+  lv_imgbtn_set_src(ui_buttonvibrate, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_vibrate_png, NULL);
+  lv_imgbtn_set_src(ui_buttonvibrate, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_vibrate_png, NULL);
+
+  lv_obj_set_height(ui_buttonvibrate, 24);
+  lv_obj_set_width(ui_buttonvibrate, LV_SIZE_CONTENT);
+
+  lv_obj_set_x(ui_buttonvibrate, -51);
+  lv_obj_set_y(ui_buttonvibrate, -50);
+
+  lv_obj_set_align(ui_buttonvibrate, LV_ALIGN_CENTER);
+
+  lv_obj_set_style_outline_color(ui_buttonvibrate, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_outline_opa(ui_buttonvibrate, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_outline_width(ui_buttonvibrate, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_outline_pad(ui_buttonvibrate, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_border_color(ui_buttonvibrate, lv_color_hex(0x22540C), LV_PART_MAIN | LV_STATE_PRESSED);
+  lv_obj_set_style_border_opa(ui_buttonvibrate, 255, LV_PART_MAIN | LV_STATE_PRESSED);
+  lv_obj_set_style_border_width(ui_buttonvibrate, 2, LV_PART_MAIN | LV_STATE_PRESSED);
+  lv_obj_set_style_img_recolor(ui_buttonvibrate, lv_color_hex(0x2B258D),
+                               LV_PART_MAIN | LV_STATE_CHECKED | LV_STATE_PRESSED);
+  lv_obj_set_style_img_recolor_opa(ui_buttonvibrate, 255, LV_PART_MAIN | LV_STATE_CHECKED | LV_STATE_PRESSED);
+
+  lv_obj_add_event_cb(ui_buttonvibrate, button_event_handler, LV_EVENT_ALL, NULL);
+
+  // ui_accelerometerText
+
+  ui_accelerometerText = lv_label_create(ui_scrollTest);
+
+  lv_obj_set_width(ui_accelerometerText, LV_SIZE_CONTENT);
+  lv_obj_set_height(ui_accelerometerText, LV_SIZE_CONTENT);
+
+  lv_obj_set_x(ui_accelerometerText, 0);
+  lv_obj_set_y(ui_accelerometerText, 10);
+
+  lv_obj_set_align(ui_accelerometerText, LV_ALIGN_CENTER);
+
+  lv_label_set_text(ui_accelerometerText, "Accelerometer");
+
+  // ui_accXtext
+
+  ui_accXtext = lv_label_create(ui_scrollTest);
+
+  lv_obj_set_width(ui_accXtext, LV_SIZE_CONTENT);
+  lv_obj_set_height(ui_accXtext, LV_SIZE_CONTENT);
+
+  lv_obj_set_x(ui_accXtext, -75);
+  lv_obj_set_y(ui_accXtext, 30);
+
+  lv_obj_set_align(ui_accXtext, LV_ALIGN_CENTER);
+
+  lv_label_set_text(ui_accXtext, "X");
+
+  // ui_accXBar
+
+  ui_accXBar = lv_bar_create(ui_scrollTest);
+  lv_bar_set_range(ui_accXBar, 0, 100);
+  lv_bar_set_value(ui_accXBar, 25, LV_ANIM_OFF);
+
+  lv_obj_set_width(ui_accXBar, 150);
+  lv_obj_set_height(ui_accXBar, 10);
+
+  lv_obj_set_x(ui_accXBar, 10);
+  lv_obj_set_y(ui_accXBar, 30);
+
+  lv_obj_set_align(ui_accXBar, LV_ALIGN_CENTER);
+
+  // ui_accYText
+
+  ui_accYText = lv_label_create(ui_scrollTest);
+
+  lv_obj_set_width(ui_accYText, LV_SIZE_CONTENT);
+  lv_obj_set_height(ui_accYText, LV_SIZE_CONTENT);
+
+  lv_obj_set_x(ui_accYText, -75);
+  lv_obj_set_y(ui_accYText, 50);
+
+  lv_obj_set_align(ui_accYText, LV_ALIGN_CENTER);
+
+  lv_label_set_text(ui_accYText, "Y");
+
+  // ui_accYBar
+
+  ui_accYBar = lv_bar_create(ui_scrollTest);
+  lv_bar_set_range(ui_accYBar, 0, 100);
+  lv_bar_set_value(ui_accYBar, 25, LV_ANIM_OFF);
+
+  lv_obj_set_width(ui_accYBar, 150);
+  lv_obj_set_height(ui_accYBar, 10);
+
+  lv_obj_set_x(ui_accYBar, 10);
+  lv_obj_set_y(ui_accYBar, 50);
+
+  lv_obj_set_align(ui_accYBar, LV_ALIGN_CENTER);
+
+  // ui_accZText
+
+  ui_accZText = lv_label_create(ui_scrollTest);
+
+  lv_obj_set_width(ui_accZText, LV_SIZE_CONTENT);
+  lv_obj_set_height(ui_accZText, LV_SIZE_CONTENT);
+
+  lv_obj_set_x(ui_accZText, -75);
+  lv_obj_set_y(ui_accZText, 70);
+
+  lv_obj_set_align(ui_accZText, LV_ALIGN_CENTER);
+
+  lv_label_set_text(ui_accZText, "Z");
+
+  // ui_accZBar
+
+  ui_accZBar = lv_bar_create(ui_scrollTest);
+  lv_bar_set_range(ui_accZBar, 0, 100);
+  lv_bar_set_value(ui_accZBar, 25, LV_ANIM_OFF);
+
+  lv_obj_set_width(ui_accZBar, 150);
+  lv_obj_set_height(ui_accZBar, 10);
+
+  lv_obj_set_x(ui_accZBar, 10);
+  lv_obj_set_y(ui_accZBar, 70);
+
+  lv_obj_set_align(ui_accZBar, LV_ALIGN_CENTER);
+}
+
+void ui_aboutScreen_screen_init(void)
+{
+
+  // ui_aboutScreen
+
+  ui_aboutScreen = lv_obj_create(NULL);
+
+  lv_obj_clear_flag(ui_aboutScreen, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_set_style_bg_color(ui_aboutScreen, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_bg_opa(ui_aboutScreen, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+  lv_obj_add_event_cb(ui_aboutScreen, my_gesture, LV_EVENT_GESTURE, NULL);
+
+  ui_aboutList = lv_obj_create(ui_aboutScreen);
+  lv_obj_set_size(ui_aboutList, 240, 240);
+  lv_obj_center(ui_aboutList);
+  lv_obj_set_flex_flow(ui_aboutList, LV_FLEX_FLOW_COLUMN);
+  lv_obj_add_event_cb(ui_aboutList, scroll_event_cb, LV_EVENT_SCROLL, NULL);
+  lv_obj_set_style_radius(ui_aboutList, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_clip_corner(ui_aboutList, true, 0);
+  lv_obj_set_scroll_dir(ui_aboutList, LV_DIR_VER);
+  lv_obj_set_scroll_snap_y(ui_aboutList, LV_SCROLL_SNAP_CENTER);
+  lv_obj_set_scrollbar_mode(ui_aboutList, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_set_style_bg_color(ui_aboutList, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_border_width(ui_aboutList, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+  lv_obj_set_style_pad_top(ui_aboutList, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_set_style_pad_bottom(ui_aboutList, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+  lv_obj_t *info;
+  //
+  info = lv_list_add_btn(ui_aboutList, NULL, "DT78 ESP32\nv1.0");
+  set_style(info);
+  info = lv_list_add_btn(ui_aboutList, NULL, "Mac Address\n00:00:00:00:00:00");
+  set_style(info);
+  info = lv_list_add_btn(ui_aboutList, NULL, "Touch\nv1.0");
+  set_style(info);
+  info = lv_list_add_btn(ui_aboutList, NULL, "Accelerometer\nv1.0");
+  set_style(info);
 }
