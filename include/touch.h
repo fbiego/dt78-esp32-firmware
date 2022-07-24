@@ -152,7 +152,7 @@ uint8_t user_i2c_read(uint16_t addr, uint8_t reg_addr, uint8_t *reg_data, uint32
 
 uint8_t user_i2c_write(uint8_t addr, uint8_t reg_addr, const uint8_t *reg_data, uint32_t length)
 {
-  byte error;
+  //byte error;
   set_i2cReading(true);
   Wire.beginTransmission(addr);
   Wire.write(reg_addr);

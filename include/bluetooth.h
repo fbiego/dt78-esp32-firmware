@@ -57,6 +57,9 @@ class MyCallbacks : public BLECharacteristicCallbacks
       case 0x7C:
         hr24 = pData[6] == 0;
         break;
+        case 0x77:
+        autoScreen = pData[6] == 1;
+        break;
       case 0x72:
         cMsg++;
         isNotify = true; // vibrate motor
@@ -145,4 +148,7 @@ void init_BLE()
   pAdvertising->setMinPreferred(0x06); // functions that help with iPhone connections issue
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
+
+  macAddr = BLEDevice::getAddress().toString().c_str();
+
 }

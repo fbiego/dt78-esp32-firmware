@@ -8,6 +8,11 @@
 #define BT1 33
 #define BT2 32
 
+String fw = "v1.0";
+uint8_t imuID;
+String macAddr = "AA:BB:CC:DD:EE:FF";
+
+
 const unsigned long DEBOUNCE = 50ul; // debounce time
 
 bool button1State, button2State;

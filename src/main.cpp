@@ -130,6 +130,10 @@ LV_IMG_DECLARE(ui_img_stopwatch_png); // assets\stopwatch.png
 LV_IMG_DECLARE(ui_img_setting_png);   // assets\setting.png
 LV_IMG_DECLARE(ui_img_search_png);    // assets\search.png
 
+LV_IMG_DECLARE(ui_img_touch_png);    // assets\touch.png
+LV_IMG_DECLARE(ui_img_accl_png);    // assets\accl.png
+LV_IMG_DECLARE(ui_img_watch_png);    // assets\watch.png
+
 LV_IMG_DECLARE(ui_img_check_png); // assets\check.png
 
 void ui_init(void);
@@ -180,8 +184,14 @@ void checkButton1()
     {
       if (screenOn)
       {
+        if (actScr == ui_testScreen)
+        {
+          screenOn = true;
+          onTime = millis();
+        }
+        else
 
-        if (actScr != ui_menuScreen)
+            if (actScr != ui_menuScreen)
         {
           load_screen(1);
         }
@@ -235,6 +245,11 @@ void checkButton2()
         {
           screenOn = false;
         }
+        else if (actScr == ui_testScreen)
+        {
+          screenOn = true;
+          onTime = millis();
+        }
         else
         {
           load_screen(0);
@@ -273,13 +288,12 @@ static void event_handler(lv_event_t *e)
   lv_obj_t *obj = lv_event_get_target(e);
   lv_obj_t *parent = lv_obj_get_parent(obj);
 
+  lv_disp_t *display = lv_disp_get_default();
+  lv_obj_t *actScr = lv_disp_get_scr_act(display);
+
   if (code == LV_EVENT_CLICKED)
   {
-    // LV_LOG_USER("Clicked: %s", lv_list_get_button_text(list1, obj));
-
-    // String button = lv_list_get_button_text(list1, obj);
-    // Serial.println(button);
-    if (parent == ui_messageList)
+    if (parent == ui_messageList && actScr == ui_messageListScreen)
     {
       uint32_t i;
       for (i = 0; i < lv_obj_get_child_cnt(parent); i++)
@@ -297,22 +311,25 @@ static void event_handler(lv_event_t *e)
     }
     else
     {
+      if (actScr == ui_menuScreen)
+      {
 
-      if (obj == ui_buttonSettings)
-      {
-        load_screen(2);
-      }
-      if (obj == ui_buttonMessages)
-      {
-        load_screen(4);
-      }
-      if (obj == ui_buttonAbout)
-      {
-        load_screen(5);
-      }
-      if (obj == ui_buttonFind)
-      {
-        load_screen(6);
+        if (obj == ui_buttonSettings)
+        {
+          load_screen(2);
+        }
+        if (obj == ui_buttonMessages)
+        {
+          load_screen(4);
+        }
+        if (obj == ui_buttonAbout)
+        {
+          load_screen(5);
+        }
+        if (obj == ui_buttonFind)
+        {
+          load_screen(6);
+        }
       }
     }
   }
@@ -329,6 +346,10 @@ static void slider_event_cb(lv_event_t *e)
   {
     int v = (int)lv_slider_get_value(slider);
     lv_event_code_t code = lv_event_get_code(e);
+    int opc = 255 - (v * 2.55);
+    lv_obj_set_style_bg_opa(ui_powerSlider, opc, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_powerSlider, opc, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     if (code == LV_EVENT_RELEASED)
     {
       if (v > 90)
@@ -588,6 +609,21 @@ void setup()
   // attachInterrupt(TINT, screenInt, RISING);
 
   lv_init();
+  init_BLE();
+
+  if (myIMU.begin(sampleRate, accelRange) != 0)
+  {
+    Serial.print("Failed to initialize IMU.\n");
+  }
+  else
+  {
+    Serial.print("IMU initialized.\n");
+  }
+
+  myIMU.intConf(123, 1, 10, HIGH);
+
+  // Get the IMU ID:
+  myIMU.readRegister(&imuID, KXTJ3_WHO_AM_I);
 
   screenWidth = gfx->width();
   screenHeight = gfx->height();
@@ -637,17 +673,6 @@ void setup()
     Serial.println("Setup done");
   }
 
-  if (myIMU.begin(sampleRate, accelRange) != 0)
-  {
-    Serial.print("Failed to initialize IMU.\n");
-  }
-  else
-  {
-    Serial.print("IMU initialized.\n");
-  }
-
-  myIMU.intConf(123, 1, 10, HIGH);
-
   onTime = millis();
   // pinMode(BL, OUTPUT);
   // digitalWrite(BL, HIGH);
@@ -669,8 +694,6 @@ void setup()
   // attach the channel to the GPIO to be ui_menuListrolled
   ledcAttachPin(ledPin, ledChannel);
   ledcWrite(ledChannel, 100);
-
-  init_BLE();
 }
 
 void loop()
@@ -755,6 +778,21 @@ void loop()
     lv_bar_set_value(ui_accYBar, map((accY * 100), -100, 100, 0, 100), LV_ANIM_ON);
     lv_bar_set_value(ui_accZBar, map((accZ * 100), -100, 100, 0, 100), LV_ANIM_ON);
   }
+  else if (actScr == ui_settingsScreen)
+  {
+    bool sw = lv_obj_has_state(ui_autoScreenSwitch, LV_STATE_CHECKED);
+    if (sw != autoScreen)
+    {
+      if (autoScreen)
+      {
+        lv_obj_add_state(ui_autoScreenSwitch, LV_STATE_CHECKED);
+      }
+      else
+      {
+        lv_obj_clear_state(ui_autoScreenSwitch, LV_STATE_CHECKED);
+      }
+    }
+  }
 
   if (isNotify)
   {
@@ -766,10 +804,10 @@ void loop()
 
   if (accX > 0.3 && accX < 1.0 && accY > -0.3 && accY < 0.3 && accZ > -1.0 && accZ < -0.7)
   {
-    if (autoScreen){
-screenOn = true;
+    if (autoScreen)
+    {
+      screenOn = true;
     }
-    
   }
 
   if (screenOn)
@@ -1478,6 +1516,8 @@ void ui_settingsScreen_screen_init(void)
 
   lv_obj_set_align(ui_colorWheel, LV_ALIGN_TOP_MID);
 
+  lv_obj_clear_flag(ui_colorWheel, LV_OBJ_FLAG_GESTURE_BUBBLE);
+
   lv_obj_add_event_cb(ui_colorWheel, theme_change, LV_EVENT_VALUE_CHANGED, NULL);
 
   // ui_powerText
@@ -1506,6 +1546,9 @@ void ui_settingsScreen_screen_init(void)
   lv_obj_set_y(ui_powerSlider, 200);
 
   lv_obj_set_align(ui_powerSlider, LV_ALIGN_CENTER);
+  lv_obj_add_flag(ui_powerSlider, LV_OBJ_FLAG_ADV_HITTEST);
+
+  lv_obj_clear_flag(ui_powerSlider, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
   lv_obj_add_event_cb(ui_powerSlider, slider_event_cb, LV_EVENT_ALL, NULL);
 }
@@ -1864,12 +1907,16 @@ void ui_aboutScreen_screen_init(void)
 
   lv_obj_t *info;
   //
-  info = lv_list_add_btn(ui_aboutList, NULL, "DT78 ESP32\nv1.0");
+  info = lv_list_add_btn(ui_aboutList, &ui_img_watch_png, "DT78 ESP32\nv1.0");
   set_style(info);
-  info = lv_list_add_btn(ui_aboutList, NULL, "Mac Address\n00:00:00:00:00:00");
+  String about = "Mac Address\n" + String(macAddr);
+  info = lv_list_add_btn(ui_aboutList, &ui_img_bluetooth_png, about.c_str());
   set_style(info);
-  info = lv_list_add_btn(ui_aboutList, NULL, "Touch\nv1.0");
+  about = "Touch Screen\nv" + String(touch_data.version15, HEX) + " (" + String(touch_data.versionInfo[0], HEX) + "-" + String(touch_data.versionInfo[0], HEX) + "-" + String(touch_data.versionInfo[0], HEX) + ")";
+  info = lv_list_add_btn(ui_aboutList, &ui_img_touch_png, about.c_str());
   set_style(info);
-  info = lv_list_add_btn(ui_aboutList, NULL, "Accelerometer\nv1.0");
+  about = "Accelerometer\nv" + String(imuID, HEX);
+  info = lv_list_add_btn(ui_aboutList, &ui_img_accl_png, about.c_str());
+
   set_style(info);
 }
