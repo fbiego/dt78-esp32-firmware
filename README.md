@@ -6,6 +6,8 @@
 #### Screens
 ![1](screens.png?raw=true "1")
 
+![2](watchfaces.png?raw=true "2")
+
 #### Videos
 
 + [`LCD Touch Test video`](https://youtu.be/1j1_iY0G4Cs)

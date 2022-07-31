@@ -1,9 +1,10 @@
 
 
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEServer.h>
-#include <BLE2902.h>
+// #include <BLEDevice.h>
+// #include <BLEUtils.h>
+// #include <BLEServer.h>
+// #include <BLE2902.h>
+#include <NimBLEDevice.h>
 
 #define SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 #define CHARACTERISTIC_UUID_RX "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
@@ -32,10 +33,12 @@ class MyCallbacks : public BLECharacteristicCallbacks
 
   void onWrite(BLECharacteristic *pCharacteristic)
   {
-    uint8_t *pData;
-    std::string value = pCharacteristic->getValue();
-    int len = value.length();
-    pData = pCharacteristic->getData();
+    // uint8_t *pData;
+    // std::string value = pCharacteristic->getValue();
+    // int len = value.length();
+    // pData = pCharacteristic->getData();
+    std::string pData = pCharacteristic->getValue();
+      int len = pData.length();
 
     //        Serial.print("Write callback for characteristic ");
     //        Serial.print(pCharacteristic->getUUID().toString().c_str());
@@ -133,12 +136,12 @@ void init_BLE()
   pServer->setCallbacks(new MyServerCallbacks());
 
   BLEService *pService = pServer->createService(SERVICE_UUID);
-  pCharacteristicTX = pService->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY);
-  pCharacteristicRX = pService->createCharacteristic(CHARACTERISTIC_UUID_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+  pCharacteristicTX = pService->createCharacteristic(CHARACTERISTIC_UUID_TX, NIMBLE_PROPERTY::NOTIFY);
+  pCharacteristicRX = pService->createCharacteristic(CHARACTERISTIC_UUID_RX, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
   pCharacteristicRX->setCallbacks(new MyCallbacks());
   pCharacteristicTX->setCallbacks(new MyCallbacks());
-  pCharacteristicTX->addDescriptor(new BLE2902());
-  pCharacteristicTX->setNotifyProperty(true);
+  // pCharacteristicTX->addDescriptor(new BLE2902());
+  // pCharacteristicTX->setNotifyProperty(true);
   pService->start();
 
   // BLEAdvertising *pAdvertising = pServer->getAdvertising();  // this still is working for backward compatibility

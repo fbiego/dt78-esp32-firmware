@@ -7,6 +7,7 @@
 #define B0 0
 #define BT1 33
 #define BT2 32
+#define MPU_INT 13
 
 String fw = "v1.0";
 uint8_t imuID;
@@ -26,6 +27,8 @@ float accX, accY, accZ;
 bool screenOn = true;
 long onTime = 0;
 
+int watchFace = -2;
+
 // backlight pin
 const int ledPin = BL; //
 
@@ -44,6 +47,8 @@ char msg[5][300];
 String title[5];
 int cMsg = -1;
 int sMsg = 0;
+
+bool powerSave = true;
 
 bool isNotify = false;
 long notifyTime = 100L;
@@ -66,6 +71,8 @@ void set_time(uint8_t sc, uint8_t mn, uint8_t hr, uint8_t dy, uint8_t mt, int yr
 void load_screen(int screen);
 void reload_message_list();
 void deep_sleep();
+void light_sleep();
+void power_save();
 int calculate_steps();
 
 void ui_watchScreen_screen_init();
@@ -75,3 +82,7 @@ void ui_settingsScreen_screen_init();
 void ui_textScreen_screen_init();
 void ui_aboutScreen_screen_init();
 void ui_testScreen_screen_init();
+void ui_solarScreen_screen_init();
+void ui_aWatch_screen_init();
+void ui_gWatch_screen_init();
+void ui_hWatch_screen_init();

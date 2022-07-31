@@ -8,7 +8,7 @@
 
 volatile bool i2cReading = false;
 
-int touch_enable = false;
+bool touch_enable = false;
 bool was_touched = false;
 bool touch_interrupt = false;
 volatile bool change = false;
@@ -62,6 +62,7 @@ void sleep_touch(bool state)
   delay(50);
   if (state)
   {
+    touch_enable = false;
     byte standby_value = 0x03;
     user_i2c_write(touch_dev_addr, 0xA5, &standby_value, 1);
   }
