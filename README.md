@@ -13,3 +13,4 @@
 + [`LCD Touch Test video`](https://youtu.be/1j1_iY0G4Cs)
 + [`PCB Assembly`](https://www.youtube.com/watch?v=O0CNbZo6Kx4)
 + [`Watch Screens`](https://www.youtube.com/watch?v=tZKffwjmkNU)
++ [`Watchfaces`](https://youtu.be/2PwVdIeqmRQ)
