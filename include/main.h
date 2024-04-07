@@ -24,10 +24,9 @@ uint8_t accelRange = 4;  // Accelerometer range = 2, 4, 8, 16g
 
 float accX, accY, accZ;
 
-bool screenOn = true;
-long onTime = 0;
+// bool screenOn = true;
+// long onTime = 0;
 
-int watchFace = -2;
 
 // backlight pin
 const int ledPin = BL; //
@@ -39,14 +38,9 @@ const int resolution = 8;
 
 int brightness = 100;
 bool motor = false;
-bool autoScreen = false;//raise to wake
-
+bool autoScreen = true;//raise to wake
+bool vibration = true;
 float vector;
-bool hr24 = true;
-char msg[5][300];
-String title[5];
-int cMsg = -1;
-int sMsg = 0;
 
 bool powerSave = true;
 
@@ -66,23 +60,7 @@ uint8_t user_i2c_write(uint8_t addr, uint8_t reg_addr, const uint8_t *reg_data, 
 uint8_t user_i2c_read(uint16_t addr, uint8_t reg_addr, uint8_t *reg_data, uint32_t length);
 
 void get_IMU();
-void init_BLE();
-void set_time(uint8_t sc, uint8_t mn, uint8_t hr, uint8_t dy, uint8_t mt, int yr);
-void load_screen(int screen);
-void reload_message_list();
 void deep_sleep();
 void light_sleep();
 void power_save();
 int calculate_steps();
-
-void ui_watchScreen_screen_init();
-void ui_menuScreen_screen_init();
-void ui_messageListScreen_screen_init();
-void ui_settingsScreen_screen_init();
-void ui_textScreen_screen_init();
-void ui_aboutScreen_screen_init();
-void ui_testScreen_screen_init();
-void ui_solarScreen_screen_init();
-void ui_aWatch_screen_init();
-void ui_gWatch_screen_init();
-void ui_hWatch_screen_init();
