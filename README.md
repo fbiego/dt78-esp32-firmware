@@ -10,6 +10,11 @@
 + [`Watch Screens`](https://www.youtube.com/watch?v=tZKffwjmkNU)
 + [`Watchfaces`](https://youtu.be/2PwVdIeqmRQ)
 
+
+https://github.com/user-attachments/assets/8dc41542-3ad4-4554-a023-f22332daad98
+
+
+
 ### PCB
 ![3](dt78_pcb.jpeg?raw=true "3")
 ![4](schematic.png?raw=true "4")
